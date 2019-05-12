@@ -3,6 +3,9 @@ import json
 import os
 import numpy as np
 import tensorflow as tf
+from tensorflow.python.distribute import reduce_util as ds_reduce_util
+from tensorflow.python.distribute import distribute_lib
+from tensorflow.python.distribute import distribution_strategy_context as distribute_ctx
 from tensorflow.python.training.optimizer import Optimizer
 from tensorflow.python.eager import context
 from tensorflow.python.eager import backprop
@@ -177,6 +180,45 @@ class AccumulatingOptimizer(object):
     GATE_NONE = 0
     GATE_OP = 1
     GATE_GRAPH = 2
+
+    @staticmethod
+    def _scale_loss(loss_value):
+        ops.get_default_graph()._is_loss_scaled_by_optimizer = False  # pylint: disable=protected-access
+        if distribute_lib.get_loss_reduction() == ds_reduce_util.ReduceOp.MEAN:
+            num_replicas = distribute_ctx.get_strategy().num_replicas_in_sync
+            if num_replicas > 1:
+                loss_value *= (1. / num_replicas)
+                ops.get_default_graph()._is_loss_scaled_by_optimizer = True  # pylint: disable=protected-access
+        return loss_value
+
+    def _assert_valid_dtypes(self, tensors):
+        """Asserts tensors are all valid types (see `_valid_dtypes`).
+        Args:
+          tensors: Tensors to check.
+        Raises:
+          ValueError: If any tensor is not a valid type.
+        """
+        valid_dtypes = self._valid_dtypes()
+        for t in tensors:
+            dtype = t.dtype.base_dtype
+            if dtype not in valid_dtypes:
+                raise ValueError(
+                    "Invalid type %r for %s, expected: %s." % (
+                        dtype, t.name, [v for v in valid_dtypes]))
+
+        # --------------
+        # Methods to be implemented by subclasses if they want to use the
+        # inherited implementation of apply_gradients() or compute_gradients().
+        # --------------
+
+    def _valid_dtypes(self):
+        """Valid types for loss, variables and gradients.
+        Subclasses should override to allow other float types.
+        Returns:
+          Valid types for loss, variables and gradients.
+        """
+        return set(
+            [dtypes.float16, dtypes.bfloat16, dtypes.float32, dtypes.float64])
 
     def opt_compute_gradients(self, loss, var_list=None,
                           gate_gradients=GATE_OP,
