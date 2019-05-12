@@ -121,7 +121,6 @@ def finetune(sess,
     if model_name != '117M':
         use_memory_saving_gradients = True
         only_train_transformer_layers = True
-        accumulate_gradients = 1
 
     context = tf.placeholder(tf.int32, [batch_size, None])
     output = model.model(hparams=hparams, X=context)
@@ -140,8 +139,6 @@ def finetune(sess,
     all_vars = [v for v in tf.trainable_variables() if 'model' in v.name]
     train_vars = [v for v in all_vars if '/h' in v.name] if only_train_transformer_layers else all_vars
     if accumulate_gradients > 1:
-        if use_memory_saving_gradients:
-            exit("Memory saving gradients are not implemented for gradient accumulation yet.")
         opt = AccumulatingOptimizer(
             opt=tf.train.AdamOptimizer(learning_rate=learning_rate),
             var_list=train_vars)
