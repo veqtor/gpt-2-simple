@@ -165,7 +165,7 @@ class AccumulatingOptimizer(object):
 
     def compute_gradients(self, loss):
         if self.use_memory_saving_gradients:
-            grads = self._compute_gradients(loss, self.var_list)
+            grads = self.opt_compute_gradients(loss, self.var_list)
         else:
             grads = self.opt.compute_gradients(loss, self.var_list)
         updates = [self.accum_vars[v].assign_add(g) for (g,v) in grads]
@@ -178,11 +178,7 @@ class AccumulatingOptimizer(object):
     GATE_OP = 1
     GATE_GRAPH = 2
 
-
-
-
-
-    def _compute_gradients(self, loss, var_list=None,
+    def opt_compute_gradients(self, loss, var_list=None,
                           gate_gradients=GATE_OP,
                           aggregation_method=None,
                           colocate_gradients_with_ops=False,
