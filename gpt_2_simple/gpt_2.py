@@ -141,6 +141,7 @@ def finetune(sess,
     if accumulate_gradients > 1:
         opt = AccumulatingOptimizer(
             opt=tf.train.AdamOptimizer(learning_rate=learning_rate),
+            use_memory_saving_gradients=use_memory_saving_gradients,
             var_list=train_vars)
         opt_reset = opt.reset()
         opt_compute = opt.compute_gradients(loss)
