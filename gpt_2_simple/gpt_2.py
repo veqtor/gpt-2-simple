@@ -95,7 +95,7 @@ def finetune(sess,
     CHECKPOINT_DIR = 'checkpoint'
     SAMPLE_DIR = 'samples'
 
-    checkpoint_path = os.path.join(CHECKPOINT_DIR, run_name)
+    checkpoint_path = '/content/drive/My Drive/checkpoint/run1'
 
     def maketree(path):
         try:
@@ -332,7 +332,7 @@ def generate(sess,
     if prefix:
         context = tf.placeholder(tf.int32, [batch_size, None])
 
-    CHECKPOINT_DIR = 'checkpoint'
+    CHECKPOINT_DIR = '/content/drive/My Drive/checkpoint/run1'
     SAMPLE_DIR = 'samples'
 
     checkpoint_path = os.path.join(CHECKPOINT_DIR, run_name)
