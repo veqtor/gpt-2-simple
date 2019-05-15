@@ -81,6 +81,7 @@ def finetune(sess,
              sample_length=1023,
              sample_num=1,
              save_every=1000,
+             input_noise=0.1,
              print_every=1,
              max_checkpoints=1,
              use_memory_saving_gradients=False,
@@ -103,6 +104,14 @@ def finetune(sess,
         except:
             pass
 
+    def randomize(context, hparams, p):
+        if p > 0:
+            mask = tf.random.uniform(shape=tf.shape(context)) < p
+            noise = tf.random.uniform(shape=tf.shape(context), minval=0, maxval=hparams.n_vocab, dtype=tf.int32)
+            return tf.where(mask, noise, context)
+        else:
+            return context
+
     maketree(checkpoint_path)
     if not model_load:
         for file in ['hparams.json', 'encoder.json', 'vocab.bpe']:
@@ -123,7 +132,8 @@ def finetune(sess,
         only_train_transformer_layers = True
 
     context = tf.placeholder(tf.int32, [batch_size, None])
-    output = model.model(hparams=hparams, X=context)
+    context_in = randomize(context, hparams, input_noise)
+    output = model.model(hparams=hparams, X=context_in)
     loss = tf.reduce_mean(
         tf.nn.sparse_softmax_cross_entropy_with_logits(
             labels=context[:, 1:], logits=output['logits'][:, :-1]))
@@ -134,7 +144,8 @@ def finetune(sess,
         context=context,
         batch_size=batch_size,
         temperature=1.0,
-        top_k=40)
+        top_k=40,
+        top_p=0.9)
 
     all_vars = [v for v in tf.trainable_variables() if 'model' in v.name]
     train_vars = [v for v in all_vars if '/h' in v.name] if only_train_transformer_layers else all_vars
@@ -315,6 +326,7 @@ def generate(sess,
              length=1023,
              temperature=0.7,
              top_k=0,
+             top_p=0.9,
              run_name='run1',
              include_prefix=True):
     """Generates text from a model loaded into memory.
@@ -350,7 +362,7 @@ def generate(sess,
         start_token=enc.encoder['<|endoftext|>'] if not prefix else None,
         context=context if prefix else None,
         batch_size=batch_size,
-        temperature=temperature, top_k=top_k
+        temperature=temperature, top_k=top_k, top_p=top_p
     )[:, 1:]
 
     if destination_path:
